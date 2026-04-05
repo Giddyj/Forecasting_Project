@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <body>
+    <h1>Model Comparison</h1>
+    <p>Dataset: <b>{{upload.original_filename}}</b></p>
+
+    {% for run, results in run_results %}
+      <hr>
+      <h2>{{run.model_name}}</h2>
+      <p>
+        MAE: <b>{{run.mae}}</b> |
+        RMSE: <b>{{run.rmse}}</b> |
+        MAPE: <b>{{run.mape}}</b>
+      </p>
+
+      <h3>Forecast (next {{run.horizon_months}} months)</h3>
+      <table border="1" cellpadding="6">
+        <tr><th>Month</th><th>Forecast</th></tr>
+        {% for r in results %}
+          <tr><td>{{r.forecast_month}}</td><td>{{r.y_pred}}</td></tr>
+        {% empty %}
+          <tr><td colspan="2">No results</td></tr>
+        {% endfor %}
+      </table>
+    {% endfor %}
+
+    <p><a href="/upload/{{upload.id}}/">Back</a></p>
+    <p><a href="/">Home</a></p>
+  </body>
+</html>

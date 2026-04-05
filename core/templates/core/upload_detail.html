@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Upload Detail</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 40px;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 26px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 20px;
+    }
+
+    .actions {
+      margin: 20px 0 30px;
+      display: flex;
+      gap: 16px;
+    }
+
+    .btn {
+      padding: 12px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #1e40af;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>{{ upload.original_filename }}</h1>
+  <p class="subtitle">
+    Status: <strong>{{ upload.status }}</strong> · Uploaded {{ upload.created_at }}
+  </p>
+
+  <div class="actions">
+    <a class="btn btn-primary" href="/upload/{{ upload.id }}/run-forecast/">
+      Run Forecast (RF · XGB · SVR)
+    </a>
+    <a class="btn btn-secondary" href="/upload/{{ upload.id }}/forecast-compare/">
+      View Comparison
+    </a>
+  </div>
+
+  <div class="card">
+    <h2>Imported Records</h2>
+
+    <table>
+      <tr>
+        <th>Month</th>
+        <th>Demand</th>
+      </tr>
+      {% for r in records %}
+        <tr>
+          <td>{{ r.month }}</td>
+          <td>{{ r.demand }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="2">No records found</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+  <div style="margin-top: 30px;">
+    <a href="/" class="btn btn-secondary">← Back to Home</a>
+  </div>
+
+</div>
+</body>
+</html>

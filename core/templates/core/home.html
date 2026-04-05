@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Forecast Information System</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      background: #f5f7fb;
+      margin: 0;
+      padding: 40px;
+      color: #1f2937;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 30px;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      color: #6b7280;
+      margin-bottom: 30px;
+    }
+
+    .primary-action {
+      display: inline-block;
+      margin-bottom: 40px;
+      padding: 12px 20px;
+      background: #2563eb;
+      color: #ffffff;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+
+    .primary-action:hover {
+      background: #1e40af;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 20px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    th, td {
+      padding: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      font-size: 14px;
+    }
+
+    th {
+      background: #f9fafb;
+      font-weight: 600;
+    }
+
+    a.link {
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 500;
+    }
+
+    a.link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+
+<body>
+<div class="container">
+
+  <h1>Forecast Information System</h1>
+  <p class="subtitle">
+    Upload demand data, run multiple forecasting models, and compare results.
+  </p>
+
+  <a class="primary-action" href="/upload/">Upload New Dataset</a>
+
+  <div class="card">
+    <h2>Recent Uploads</h2>
+
+    <table>
+      <tr>
+        <th>Filename</th>
+        <th>Status</th>
+        <th>Uploaded</th>
+      </tr>
+      {% for u in uploads %}
+        <tr>
+          <td>
+            <a class="link" href="/upload/{{ u.id }}/">
+              {{ u.original_filename }}
+            </a>
+          </td>
+          <td>{{ u.status }}</td>
+          <td>{{ u.created_at }}</td>
+        </tr>
+      {% empty %}
+        <tr>
+          <td colspan="3">No uploads yet</td>
+        </tr>
+      {% endfor %}
+    </table>
+  </div>
+
+</div>
+</body>
+</html>
