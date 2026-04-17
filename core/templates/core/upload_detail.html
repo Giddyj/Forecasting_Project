@@ -118,6 +118,26 @@
         </tr>
       {% endfor %}
     </table>
+
+    <div style="margin-top: 24px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+      <h3 style="font-size: 15px; margin-bottom: 12px;">Add a Data Point</h3>
+      {% if error %}
+        <p style="color: #dc2626; font-size: 13px; margin-bottom: 10px;">{{ error }}</p>
+      {% endif %}
+      <form method="post" action="/upload/{{ upload.id }}/add-record/" style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap;">
+        {% csrf_token %}
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Month</label>
+          {{ form.month }}
+        </div>
+        <div>
+          <label style="display:block; font-size:13px; font-weight:600; margin-bottom:4px;">Demand</label>
+          {{ form.demand }}
+        </div>
+        <button type="submit" class="btn btn-primary" style="padding: 8px 16px;">Add</button>
+      </form>
+      <p style="font-size:12px; color:#6b7280; margin-top:8px;">If a record for that month already exists, its value will be updated.</p>
+    </div>
   </div>
 
   <div style="margin-top: 30px;">

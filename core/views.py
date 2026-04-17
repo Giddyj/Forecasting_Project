@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from .forms import UploadFileForm
+from .forms import UploadFileForm, AddRecordForm
 from .models import Upload, DemandRecord
 from .services import read_and_validate
 from .models import ForecastRun, ForecastResult
@@ -39,7 +39,37 @@ def upload_data(request):
 def upload_detail(request, upload_id):
     upload = get_object_or_404(Upload, id=upload_id)
     records = DemandRecord.objects.filter(upload=upload).order_by("month")
-    return render(request, "core/upload_detail.html", {"upload": upload, "records": records})
+    form = AddRecordForm()
+    return render(request, "core/upload_detail.html", {"upload": upload, "records": records, "form": form})
+
+
+def add_record(request, upload_id):
+    upload = get_object_or_404(Upload, id=upload_id)
+    form = AddRecordForm(request.POST)
+    error = None
+
+    if form.is_valid():
+        from .services import _to_month_start
+        month = _to_month_start(form.cleaned_data["month"])
+        if month is None:
+            error = "Invalid month — use YYYY-MM format."
+        else:
+            demand = form.cleaned_data["demand"]
+            obj, created = DemandRecord.objects.get_or_create(
+                upload=upload, month=month,
+                defaults={"demand": demand},
+            )
+            if not created:
+                obj.demand = demand
+                obj.save()
+
+    if error:
+        records = DemandRecord.objects.filter(upload=upload).order_by("month")
+        return render(request, "core/upload_detail.html", {
+            "upload": upload, "records": records, "form": form, "error": error
+        })
+
+    return redirect("upload_detail", upload_id=upload.id)
 
 
 def run_forecast(request, upload_id):
