@@ -122,7 +122,16 @@
 
       <div class="model-header">
         <div class="model-name">{{ run.model_name }}</div>
-        <div class="subtitle">Horizon: {{ run.horizon_months }} months</div>
+        <div style="font-size:13px; color:#6b7280;">
+          Horizon: {{ run.horizon_months }} months
+          {% if run.model_name == "Moving Average" %}
+            &nbsp;·&nbsp; Window: {{ run.n_lags }}
+          {% elif run.model_name == "Exp. Smoothing" %}
+            &nbsp;·&nbsp; α: 0.{{ run.n_lags|stringformat:"02d" }}
+          {% else %}
+            &nbsp;·&nbsp; Lags: {{ run.n_lags }}
+          {% endif %}
+        </div>
       </div>
 
       <div style="margin-bottom:6px; font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.05em;">Holdout Test Set</div>

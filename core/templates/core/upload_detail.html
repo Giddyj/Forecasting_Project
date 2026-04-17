@@ -90,13 +90,61 @@
     Status: <strong>{{ upload.status }}</strong> · Uploaded {{ upload.created_at }}
   </p>
 
-  <div class="actions">
-    <a class="btn btn-primary" href="/upload/{{ upload.id }}/run-forecast/">
-      Run Forecast (RF · XGB · SVR · MA · ES)
-    </a>
-    <a class="btn btn-secondary" href="/upload/{{ upload.id }}/forecast-compare/">
-      View Comparison
-    </a>
+  <div class="card" style="margin-bottom: 24px;">
+    <h2 style="font-size:17px; margin-bottom:16px;">Forecast Settings</h2>
+    <form method="post" action="/upload/{{ upload.id }}/run-forecast/">
+      {% csrf_token %}
+      <table style="margin-top:0;">
+        <thead>
+          <tr>
+            <th style="width:200px;">Model</th>
+            <th>Parameter</th>
+            <th style="width:120px;">Value</th>
+            <th style="font-size:12px; color:#6b7280; font-weight:400;">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Random Forest</td>
+            <td style="color:#6b7280; font-size:13px;">n_lags</td>
+            <td><input type="number" name="lags_rf" value="6" min="1" max="24" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
+            <td style="font-size:12px; color:#9ca3af;">Months of history used as input features</td>
+          </tr>
+          <tr>
+            <td>XGBoost</td>
+            <td style="color:#6b7280; font-size:13px;">n_lags</td>
+            <td><input type="number" name="lags_xgb" value="6" min="1" max="24" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
+            <td style="font-size:12px; color:#9ca3af;">Months of history used as input features</td>
+          </tr>
+          <tr>
+            <td>SVR</td>
+            <td style="color:#6b7280; font-size:13px;">n_lags</td>
+            <td><input type="number" name="lags_svr" value="6" min="1" max="24" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
+            <td style="font-size:12px; color:#9ca3af;">Months of history used as input features</td>
+          </tr>
+          <tr>
+            <td>Moving Average</td>
+            <td style="color:#6b7280; font-size:13px;">window</td>
+            <td><input type="number" name="window_ma" value="6" min="1" max="24" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
+            <td style="font-size:12px; color:#9ca3af;">Number of periods to average</td>
+          </tr>
+          <tr>
+            <td>Exp. Smoothing</td>
+            <td style="color:#6b7280; font-size:13px;">alpha (α)</td>
+            <td><input type="number" name="alpha_es" value="0.3" min="0.01" max="0.99" step="0.01" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
+            <td style="font-size:12px; color:#9ca3af;">Smoothing factor — higher = more weight on recent data</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
+        <button type="submit" class="btn btn-primary" style="border:none; cursor:pointer;">
+          Run Forecast (RF · XGB · SVR · MA · ES)
+        </button>
+        <a class="btn btn-secondary" href="/upload/{{ upload.id }}/forecast-compare/">
+          View Comparison
+        </a>
+      </div>
+    </form>
   </div>
 
   <div class="card">

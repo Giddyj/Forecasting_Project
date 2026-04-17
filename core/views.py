@@ -80,11 +80,24 @@ def run_forecast(request, upload_id):
     values = [float(r.demand) for r in records]
 
     horizon = 6
-    n_lags = 3
     test_size = 6
 
+    def get_int(key, default, lo=1, hi=24):
+        try:
+            return max(lo, min(hi, int(request.POST.get(key, default))))
+        except (ValueError, TypeError):
+            return default
 
-    for model_name in ["Random Forest", "XGBoost", "SVR"]:
+    lags_rf  = get_int("lags_rf",  6)
+    lags_xgb = get_int("lags_xgb", 6)
+    lags_svr = get_int("lags_svr", 6)
+    window_ma = get_int("window_ma", 6)
+    try:
+        alpha_es = max(0.01, min(0.99, float(request.POST.get("alpha_es", 0.3))))
+    except (ValueError, TypeError):
+        alpha_es = 0.3
+
+    for model_name, n_lags in [("Random Forest", lags_rf), ("XGBoost", lags_xgb), ("SVR", lags_svr)]:
         out = train_and_forecast(
             model_name=model_name,
             dates=dates,
@@ -118,10 +131,10 @@ def run_forecast(request, upload_id):
         ])
 
     # Moving Average
-    ma_out = moving_average_forecast(dates, values, horizon_months=horizon, window=n_lags, test_size=test_size)
+    ma_out = moving_average_forecast(dates, values, horizon_months=horizon, window=window_ma, test_size=test_size)
     ma_run = ForecastRun.objects.create(
         upload=upload, model_name="Moving Average",
-        horizon_months=horizon, n_lags=n_lags, test_size=test_size,
+        horizon_months=horizon, n_lags=window_ma, test_size=test_size,
         mae=ma_out["mae"], rmse=ma_out["rmse"], mape=ma_out["mape"],
     )
     ForecastResult.objects.bulk_create([
@@ -133,10 +146,10 @@ def run_forecast(request, upload_id):
     ])
 
     # Exponential Smoothing
-    es_out = exponential_smoothing_forecast(dates, values, horizon_months=horizon, test_size=test_size)
+    es_out = exponential_smoothing_forecast(dates, values, horizon_months=horizon, alpha=alpha_es, test_size=test_size)
     es_run = ForecastRun.objects.create(
         upload=upload, model_name="Exp. Smoothing",
-        horizon_months=horizon, n_lags=0, test_size=test_size,
+        horizon_months=horizon, n_lags=int(alpha_es * 100), test_size=test_size,
         mae=es_out["mae"], rmse=es_out["rmse"], mape=es_out["mape"],
     )
     ForecastResult.objects.bulk_create([
