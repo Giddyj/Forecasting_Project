@@ -32,6 +32,11 @@ class ForecastRun(models.Model):
     rmse = models.FloatField(null=True, blank=True)
     mape = models.FloatField(null=True, blank=True)
 
+    # cross-validation metrics (TimeSeriesSplit on training data, ML models only)
+    cv_mae = models.FloatField(null=True, blank=True)
+    cv_rmse = models.FloatField(null=True, blank=True)
+    cv_mape = models.FloatField(null=True, blank=True)
+
     # settings used for evaluation/forecasting
     test_size = models.IntegerField(default=6)
     n_lags = models.IntegerField(default=3)

@@ -103,6 +103,9 @@ def run_forecast(request, upload_id):
             mae=out["mae"],
             rmse=out["rmse"],
             mape=out["mape"],
+            cv_mae=out["cv_mae"],
+            cv_rmse=out["cv_rmse"],
+            cv_mape=out["cv_mape"],
         )
 
         ForecastResult.objects.bulk_create([

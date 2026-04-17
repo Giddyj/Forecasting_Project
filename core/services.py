@@ -45,6 +45,7 @@ import pandas as pd
 from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.model_selection import TimeSeriesSplit
 
 from xgboost import XGBRegressor
 
@@ -102,6 +103,25 @@ def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, te
     else:
         raise ValueError("Unknown model")
 
+    # TimeSeriesSplit CV on the training portion only
+    n_splits = min(5, max(2, split_idx // 2))
+    tscv = TimeSeriesSplit(n_splits=n_splits)
+    cv_maes, cv_rmses, cv_mapes = [], [], []
+    for train_idx, val_idx in tscv.split(X_train):
+        if len(train_idx) == 0 or len(val_idx) == 0:
+            continue
+        model.fit(X_train[train_idx], y_train[train_idx])
+        y_val_pred = model.predict(X_train[val_idx])
+        f_mae, f_rmse, f_mape = compute_metrics(y_train[val_idx], y_val_pred)
+        cv_maes.append(f_mae)
+        cv_rmses.append(f_rmse)
+        if f_mape is not None:
+            cv_mapes.append(f_mape)
+
+    cv_mae = float(np.mean(cv_maes)) if cv_maes else None
+    cv_rmse = float(np.mean(cv_rmses)) if cv_rmses else None
+    cv_mape = float(np.mean(cv_mapes)) if cv_mapes else None
+
     model.fit(X_train, y_train)
     y_pred_test = model.predict(X_test)
     mae, rmse, mape = compute_metrics(y_test, y_pred_test)
@@ -133,8 +153,11 @@ def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, te
         "mae": mae,
         "rmse": rmse,
         "mape": mape,
+        "cv_mae": cv_mae,
+        "cv_rmse": cv_rmse,
+        "cv_mape": cv_mape,
         "preds": preds,
-        "test_points": test_points,  # (month, y_true, y_pred)
+        "test_points": test_points,
     }
 
 

@@ -125,11 +125,21 @@
         <div class="subtitle">Horizon: {{ run.horizon_months }} months</div>
       </div>
 
+      <div style="margin-bottom:6px; font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.05em;">Holdout Test Set</div>
       <div class="metrics">
-        <div class="metric">MAE: <strong>{{ run.mae }}</strong></div>
-        <div class="metric">RMSE: <strong>{{ run.rmse }}</strong></div>
-        <div class="metric">MAPE: <strong>{{ run.mape }}%</strong></div>
+        <div class="metric">MAE: <strong>{{ run.mae|floatformat:2 }}</strong></div>
+        <div class="metric">RMSE: <strong>{{ run.rmse|floatformat:2 }}</strong></div>
+        <div class="metric">MAPE: <strong>{{ run.mape|floatformat:2 }}%</strong></div>
       </div>
+
+      {% if run.cv_mae %}
+      <div style="margin-bottom:6px; font-size:12px; font-weight:600; color:#6b7280; text-transform:uppercase; letter-spacing:.05em;">K-Fold Cross-Validation (TimeSeriesSplit)</div>
+      <div class="metrics">
+        <div class="metric">CV MAE: <strong>{{ run.cv_mae|floatformat:2 }}</strong></div>
+        <div class="metric">CV RMSE: <strong>{{ run.cv_rmse|floatformat:2 }}</strong></div>
+        <div class="metric">CV MAPE: <strong>{{ run.cv_mape|floatformat:2 }}%</strong></div>
+      </div>
+      {% endif %}
 
       <div class="section-title">Test Set — Actual vs Predicted</div>
 
