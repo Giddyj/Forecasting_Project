@@ -3,7 +3,7 @@ from .forms import UploadFileForm
 from .models import Upload, DemandRecord
 from .services import read_and_validate
 from .models import ForecastRun, ForecastResult
-from .services import train_and_forecast
+from .services import train_and_forecast, moving_average_forecast, exponential_smoothing_forecast
 from .models import ForecastRun, ForecastResult, TestResult
 
 
@@ -80,9 +80,39 @@ def run_forecast(request, upload_id):
             for d, p in out["preds"]
         ])
         TestResult.objects.bulk_create([
-        TestResult(run=run, month=d, y_true=float(y_t), y_pred=float(y_p))
-        for d, y_t, y_p in out["test_points"]
+            TestResult(run=run, month=d, y_true=float(y_t), y_pred=float(y_p))
+            for d, y_t, y_p in out["test_points"]
         ])
+
+    # Moving Average
+    ma_out = moving_average_forecast(dates, values, horizon_months=horizon, window=n_lags, test_size=test_size)
+    ma_run = ForecastRun.objects.create(
+        upload=upload, model_name="Moving Average",
+        horizon_months=horizon, n_lags=n_lags, test_size=test_size,
+        mae=ma_out["mae"], rmse=ma_out["rmse"], mape=ma_out["mape"],
+    )
+    ForecastResult.objects.bulk_create([
+        ForecastResult(run=ma_run, forecast_month=d, y_pred=p) for d, p in ma_out["preds"]
+    ])
+    TestResult.objects.bulk_create([
+        TestResult(run=ma_run, month=d, y_true=float(y_t), y_pred=float(y_p))
+        for d, y_t, y_p in ma_out["test_points"]
+    ])
+
+    # Exponential Smoothing
+    es_out = exponential_smoothing_forecast(dates, values, horizon_months=horizon, test_size=test_size)
+    es_run = ForecastRun.objects.create(
+        upload=upload, model_name="Exp. Smoothing",
+        horizon_months=horizon, n_lags=0, test_size=test_size,
+        mae=es_out["mae"], rmse=es_out["rmse"], mape=es_out["mape"],
+    )
+    ForecastResult.objects.bulk_create([
+        ForecastResult(run=es_run, forecast_month=d, y_pred=p) for d, p in es_out["preds"]
+    ])
+    TestResult.objects.bulk_create([
+        TestResult(run=es_run, month=d, y_true=float(y_t), y_pred=float(y_p))
+        for d, y_t, y_p in es_out["test_points"]
+    ])
 
     return redirect("forecast_compare", upload_id=upload.id)
 
@@ -91,16 +121,16 @@ def forecast_compare(request, upload_id):
     upload = get_object_or_404(Upload, id=upload_id)
 
     # Get latest run per model
+    all_model_names = ["Random Forest", "XGBoost", "SVR", "Moving Average", "Exp. Smoothing"]
     latest = {}
     for run in ForecastRun.objects.filter(upload=upload).order_by("-created_at"):
         if run.model_name not in latest:
             latest[run.model_name] = run
-        if len(latest) == 3:
+        if len(latest) == len(all_model_names):
             break
 
-    ordered_models = ["Random Forest", "XGBoost", "SVR"]
     run_results = []
-    for name in ["Random Forest", "XGBoost", "SVR"]:
+    for name in all_model_names:
         run = latest.get(name)
         if run:
             forecast_results = ForecastResult.objects.filter(run=run).order_by("forecast_month")

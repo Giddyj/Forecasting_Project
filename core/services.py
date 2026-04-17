@@ -137,3 +137,71 @@ def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, te
         "test_points": test_points,  # (month, y_true, y_pred)
     }
 
+
+def moving_average_forecast(dates, values, horizon_months=6, window=3, test_size=6):
+    n = len(values)
+    values = list(map(float, values))
+    test_size = min(test_size, max(1, n - window - 1))
+    train_end = n - test_size
+
+    test_points = []
+    for i in range(test_size):
+        idx = train_end + i
+        w = min(window, idx)
+        y_pred = float(np.mean(values[idx - w:idx]))
+        test_points.append((dates[idx], values[idx], y_pred))
+
+    y_true = [t[1] for t in test_points]
+    y_pred_list = [t[2] for t in test_points]
+    mae, rmse, mape = compute_metrics(y_true, y_pred_list)
+
+    history = list(values)
+    last_date = dates[-1]
+    preds = []
+    for _ in range(horizon_months):
+        w = min(window, len(history))
+        yhat = float(np.mean(history[-w:]))
+        next_month = (pd.Timestamp(last_date) + pd.offsets.MonthBegin(1)).date()
+        preds.append((next_month, yhat))
+        history.append(yhat)
+        last_date = next_month
+
+    return {"mae": mae, "rmse": rmse, "mape": mape, "preds": preds, "test_points": test_points}
+
+
+def exponential_smoothing_forecast(dates, values, horizon_months=6, alpha=0.3, test_size=6):
+    n = len(values)
+    values = list(map(float, values))
+    test_size = min(test_size, max(1, n - 2))
+    train_end = n - test_size
+
+    # initialise on training window
+    smoothed = values[0]
+    for v in values[1:train_end]:
+        smoothed = alpha * v + (1 - alpha) * smoothed
+
+    test_points = []
+    for i in range(test_size):
+        idx = train_end + i
+        y_pred = smoothed
+        test_points.append((dates[idx], values[idx], y_pred))
+        smoothed = alpha * values[idx] + (1 - alpha) * smoothed
+
+    y_true = [t[1] for t in test_points]
+    y_pred_list = [t[2] for t in test_points]
+    mae, rmse, mape = compute_metrics(y_true, y_pred_list)
+
+    # retrain on all data for final forecast
+    smoothed = values[0]
+    for v in values[1:]:
+        smoothed = alpha * v + (1 - alpha) * smoothed
+
+    last_date = dates[-1]
+    preds = []
+    for _ in range(horizon_months):
+        next_month = (pd.Timestamp(last_date) + pd.offsets.MonthBegin(1)).date()
+        preds.append((next_month, smoothed))
+        last_date = next_month
+
+    return {"mae": mae, "rmse": rmse, "mape": mape, "preds": preds, "test_points": test_points}
+
