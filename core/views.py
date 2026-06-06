@@ -97,6 +97,10 @@ def run_forecast(request, upload_id):
     except (ValueError, TypeError):
         alpha_es = 0.3
 
+    hw_trend    = request.POST.get("hw_trend", "add") if request.POST.get("hw_trend") in ("add", "mul") else "add"
+    hw_seasonal = request.POST.get("hw_seasonal", "add") if request.POST.get("hw_seasonal") in ("add", "mul") else "add"
+    hw_damped   = request.POST.get("hw_damped") == "yes"
+
     for model_name, n_lags in [("Random Forest", lags_rf), ("XGBoost", lags_xgb), ("SVR", lags_svr)]:
         out = train_and_forecast(
             model_name=model_name,
@@ -161,7 +165,10 @@ def run_forecast(request, upload_id):
     ])
 
     # Holt-Winters (Triple Exponential Smoothing)
-    hw_out = holt_winters_forecast(dates, values, horizon_months=horizon, test_size=test_size)
+    hw_out = holt_winters_forecast(
+        dates, values, horizon_months=horizon, test_size=test_size,
+        trend=hw_trend, seasonal=hw_seasonal, damped_trend=hw_damped,
+    )
     hw_run = ForecastRun.objects.create(
         upload=upload, model_name="Holt-Winters",
         horizon_months=horizon, n_lags=0, test_size=test_size,

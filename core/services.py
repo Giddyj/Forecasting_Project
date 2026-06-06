@@ -194,10 +194,37 @@ def moving_average_forecast(dates, values, horizon_months=6, window=3, test_size
     return {"mae": mae, "rmse": rmse, "mape": mape, "preds": preds, "test_points": test_points}
 
 
-def holt_winters_forecast(dates, values, horizon_months=6, test_size=6, seasonal_periods=12):
-    """Triple Exponential Smoothing (Holt-Winters) with additive trend and seasonal components.
-    Falls back to trend-only if there is insufficient data for a full seasonal fit (< 2 * seasonal_periods)."""
+def holt_winters_forecast(dates, values, horizon_months=6, test_size=6,
+                          seasonal_periods=12, trend="add", seasonal="add", damped_trend=False):
+    """Triple Exponential Smoothing (Holt-Winters).
+    trend/seasonal: 'add' or 'mul'. damped_trend flattens the trend over time.
+    Falls back to trend-only if there is insufficient data for a full seasonal fit (< 2 * seasonal_periods).
+    Falls back further to additive if multiplicative fails (e.g. data contains zeros)."""
     from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWSmoothing
+
+    def _fit(series, use_seasonal):
+        use_periods = seasonal_periods if use_seasonal else None
+        use_trend = trend
+        use_damped = damped_trend if use_trend else False
+        try:
+            return HWSmoothing(
+                series,
+                trend=use_trend,
+                damped_trend=use_damped,
+                seasonal=seasonal if use_seasonal else None,
+                seasonal_periods=use_periods,
+                initialization_method="estimated",
+            ).fit(optimized=True)
+        except Exception:
+            # Fallback: additive trend + seasonal (or no seasonal)
+            return HWSmoothing(
+                series,
+                trend="add",
+                damped_trend=use_damped,
+                seasonal="add" if use_seasonal else None,
+                seasonal_periods=use_periods,
+                initialization_method="estimated",
+            ).fit(optimized=True)
 
     n = len(values)
     values = list(map(float, values))
@@ -206,41 +233,12 @@ def holt_winters_forecast(dates, values, horizon_months=6, test_size=6, seasonal
     train_vals = values[:train_end]
     test_vals = values[train_end:]
 
-    # Seasonal component requires at least 2 full periods of training data
-    use_seasonal = "add" if train_end >= 2 * seasonal_periods else None
-    use_periods = seasonal_periods if use_seasonal else None
-
-    try:
-        fit = HWSmoothing(
-            train_vals,
-            trend="add",
-            seasonal=use_seasonal,
-            seasonal_periods=use_periods,
-            initialization_method="estimated",
-        ).fit(optimized=True)
-    except Exception:
-        # Fallback: additive trend, no seasonal
-        fit = HWSmoothing(train_vals, trend="add", seasonal=None).fit(optimized=True)
-
+    fit = _fit(train_vals, use_seasonal=train_end >= 2 * seasonal_periods)
     y_pred_arr = fit.forecast(test_size)
     mae, rmse, mape = compute_metrics(test_vals, y_pred_arr.tolist())
     test_points = list(zip(dates[train_end:], test_vals, y_pred_arr.tolist()))
 
-    # Refit on all data for the final forecast
-    use_seasonal_all = "add" if n >= 2 * seasonal_periods else None
-    use_periods_all = seasonal_periods if use_seasonal_all else None
-
-    try:
-        full_fit = HWSmoothing(
-            values,
-            trend="add",
-            seasonal=use_seasonal_all,
-            seasonal_periods=use_periods_all,
-            initialization_method="estimated",
-        ).fit(optimized=True)
-    except Exception:
-        full_fit = HWSmoothing(values, trend="add", seasonal=None).fit(optimized=True, disp=False)
-
+    full_fit = _fit(values, use_seasonal=n >= 2 * seasonal_periods)
     future_arr = full_fit.forecast(horizon_months)
     last_date = dates[-1]
     preds = []

@@ -135,10 +135,35 @@
             <td style="font-size:12px; color:#9ca3af;">Smoothing factor — higher = more weight on recent data</td>
           </tr>
           <tr>
-            <td>Holt-Winters</td>
-            <td style="color:#6b7280; font-size:13px;">—</td>
-            <td style="font-size:12px; color:#9ca3af; padding: 10px 12px;">Auto</td>
-            <td style="font-size:12px; color:#9ca3af;">Additive trend + seasonal (seasonal fit requires ≥ 24 months)</td>
+            <td rowspan="3">Holt-Winters</td>
+            <td style="color:#6b7280; font-size:13px;">trend</td>
+            <td>
+              <select name="hw_trend" style="width:110px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+                <option value="add">Additive</option>
+                <option value="mul">Multiplicative</option>
+              </select>
+            </td>
+            <td style="font-size:12px; color:#9ca3af;">Additive = constant trend size; Multiplicative = trend grows with level</td>
+          </tr>
+          <tr>
+            <td style="color:#6b7280; font-size:13px;">seasonal</td>
+            <td>
+              <select name="hw_seasonal" style="width:110px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+                <option value="add">Additive</option>
+                <option value="mul">Multiplicative</option>
+              </select>
+            </td>
+            <td style="font-size:12px; color:#9ca3af;">Additive = fixed seasonal swings; Multiplicative = swings scale with level (requires ≥ 24 months)</td>
+          </tr>
+          <tr>
+            <td style="color:#6b7280; font-size:13px;">damped trend</td>
+            <td>
+              <select name="hw_damped" style="width:110px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px; font-size:13px;">
+                <option value="no">No</option>
+                <option value="yes">Yes</option>
+              </select>
+            </td>
+            <td style="font-size:12px; color:#9ca3af;">Dampens trend so it flattens over time — more conservative long-range forecasts</td>
           </tr>
         </tbody>
       </table>
