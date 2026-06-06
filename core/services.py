@@ -46,14 +46,19 @@ from sklearn.svm import SVR
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import TimeSeriesSplit
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 
 from xgboost import XGBRegressor
 
 
-def make_supervised(values, n_lags=3):
+def make_supervised(values, dates, n_lags=6):
+    """Lag features + month-of-year so models can learn seasonal patterns."""
     X, y = [], []
     for i in range(n_lags, len(values)):
-        X.append(values[i - n_lags:i])
+        lags = list(values[i - n_lags:i])
+        month_num = dates[i].month  # 1-12
+        X.append(lags + [month_num])
         y.append(values[i])
     return np.array(X, dtype=float), np.array(y, dtype=float)
 
@@ -70,25 +75,25 @@ def compute_metrics(y_true, y_pred):
     return mae, rmse, mape
 
 
-def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, test_size=6):
+def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=6, test_size=6):
     n = len(values)
 
-    # auto-adjust for small datasets so demo files work
-    n_lags = min(n_lags, max(1, n - 3))          # keep at least 1 lag, leave some room
-    test_size = min(test_size, max(1, n - n_lags - 1))  # keep at least 1 test point
+    # auto-adjust for small datasets
+    n_lags = min(n_lags, max(1, n - 3))
+    test_size = min(test_size, max(1, n - n_lags - 1))
 
-    # still need enough data to create supervised samples
     if n <= (n_lags + 1):
         raise ValueError("Not enough rows even after adjustment. Upload more months.")
 
-    X, y = make_supervised(values, n_lags=n_lags)
+    X, y = make_supervised(values, dates, n_lags=n_lags)
 
     split_idx = len(y) - test_size
     X_train, y_train = X[:split_idx], y[:split_idx]
     X_test, y_test = X[split_idx:], y[split_idx:]
 
     if model_name == "SVR":
-        model = SVR()
+        # SVR requires feature scaling to work correctly
+        model = Pipeline([("scaler", StandardScaler()), ("svr", SVR())])
     elif model_name == "Random Forest":
         model = RandomForestRegressor(n_estimators=300, random_state=42)
     elif model_name == "XGBoost":
@@ -126,15 +131,12 @@ def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, te
     y_pred_test = model.predict(X_test)
     mae, rmse, mape = compute_metrics(y_test, y_pred_test)
 
-    # Map supervised indices back to actual months:
-    # y[i] corresponds to dates[n_lags + i]
     test_start_in_y = split_idx
     test_end_in_y = len(y)
     test_dates = dates[n_lags + test_start_in_y : n_lags + test_end_in_y]
-
     test_points = list(zip(test_dates, y_test.tolist(), y_pred_test.tolist()))
 
-    # retrain on all data
+    # retrain on all data for final forecast
     model.fit(X, y)
 
     history = list(map(float, values))
@@ -142,9 +144,9 @@ def train_and_forecast(model_name, dates, values, horizon_months=6, n_lags=3, te
     preds = []
 
     for _ in range(horizon_months):
-        x_input = np.array(history[-n_lags:], dtype=float).reshape(1, -1)
-        yhat = float(model.predict(x_input)[0])
         next_month = (pd.Timestamp(last_date) + pd.offsets.MonthBegin(1)).date()
+        x_input = np.array(list(history[-n_lags:]) + [next_month.month], dtype=float).reshape(1, -1)
+        yhat = float(model.predict(x_input)[0])
         preds.append((next_month, yhat))
         history.append(yhat)
         last_date = next_month
@@ -190,6 +192,69 @@ def moving_average_forecast(dates, values, horizon_months=6, window=3, test_size
         last_date = next_month
 
     return {"mae": mae, "rmse": rmse, "mape": mape, "preds": preds, "test_points": test_points}
+
+
+def holt_winters_forecast(dates, values, horizon_months=6, test_size=6, seasonal_periods=12):
+    """Triple Exponential Smoothing (Holt-Winters) with additive trend and seasonal components.
+    Falls back to trend-only if there is insufficient data for a full seasonal fit (< 2 * seasonal_periods)."""
+    from statsmodels.tsa.holtwinters import ExponentialSmoothing as HWSmoothing
+
+    n = len(values)
+    values = list(map(float, values))
+    test_size = min(test_size, max(1, n - 3))
+    train_end = n - test_size
+    train_vals = values[:train_end]
+    test_vals = values[train_end:]
+
+    # Seasonal component requires at least 2 full periods of training data
+    use_seasonal = "add" if train_end >= 2 * seasonal_periods else None
+    use_periods = seasonal_periods if use_seasonal else None
+
+    try:
+        fit = HWSmoothing(
+            train_vals,
+            trend="add",
+            seasonal=use_seasonal,
+            seasonal_periods=use_periods,
+            initialization_method="estimated",
+        ).fit(optimized=True)
+    except Exception:
+        # Fallback: additive trend, no seasonal
+        fit = HWSmoothing(train_vals, trend="add", seasonal=None).fit(optimized=True)
+
+    y_pred_arr = fit.forecast(test_size)
+    mae, rmse, mape = compute_metrics(test_vals, y_pred_arr.tolist())
+    test_points = list(zip(dates[train_end:], test_vals, y_pred_arr.tolist()))
+
+    # Refit on all data for the final forecast
+    use_seasonal_all = "add" if n >= 2 * seasonal_periods else None
+    use_periods_all = seasonal_periods if use_seasonal_all else None
+
+    try:
+        full_fit = HWSmoothing(
+            values,
+            trend="add",
+            seasonal=use_seasonal_all,
+            seasonal_periods=use_periods_all,
+            initialization_method="estimated",
+        ).fit(optimized=True)
+    except Exception:
+        full_fit = HWSmoothing(values, trend="add", seasonal=None).fit(optimized=True, disp=False)
+
+    future_arr = full_fit.forecast(horizon_months)
+    last_date = dates[-1]
+    preds = []
+    for i, yhat in enumerate(future_arr):
+        next_month = (pd.Timestamp(last_date) + pd.offsets.MonthBegin(i + 1)).date()
+        preds.append((next_month, float(yhat)))
+
+    return {
+        "mae": mae,
+        "rmse": rmse,
+        "mape": mape,
+        "preds": preds,
+        "test_points": test_points,
+    }
 
 
 def exponential_smoothing_forecast(dates, values, horizon_months=6, alpha=0.3, test_size=6):

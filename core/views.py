@@ -3,7 +3,7 @@ from .forms import UploadFileForm, AddRecordForm
 from .models import Upload, DemandRecord
 from .services import read_and_validate
 from .models import ForecastRun, ForecastResult
-from .services import train_and_forecast, moving_average_forecast, exponential_smoothing_forecast
+from .services import train_and_forecast, moving_average_forecast, exponential_smoothing_forecast, holt_winters_forecast
 from .models import ForecastRun, ForecastResult, TestResult
 
 
@@ -160,6 +160,21 @@ def run_forecast(request, upload_id):
         for d, y_t, y_p in es_out["test_points"]
     ])
 
+    # Holt-Winters (Triple Exponential Smoothing)
+    hw_out = holt_winters_forecast(dates, values, horizon_months=horizon, test_size=test_size)
+    hw_run = ForecastRun.objects.create(
+        upload=upload, model_name="Holt-Winters",
+        horizon_months=horizon, n_lags=0, test_size=test_size,
+        mae=hw_out["mae"], rmse=hw_out["rmse"], mape=hw_out["mape"],
+    )
+    ForecastResult.objects.bulk_create([
+        ForecastResult(run=hw_run, forecast_month=d, y_pred=p) for d, p in hw_out["preds"]
+    ])
+    TestResult.objects.bulk_create([
+        TestResult(run=hw_run, month=d, y_true=float(y_t), y_pred=float(y_p))
+        for d, y_t, y_p in hw_out["test_points"]
+    ])
+
     return redirect("forecast_compare", upload_id=upload.id)
 
 
@@ -167,7 +182,7 @@ def forecast_compare(request, upload_id):
     upload = get_object_or_404(Upload, id=upload_id)
 
     # Get latest run per model
-    all_model_names = ["Random Forest", "XGBoost", "SVR", "Moving Average", "Exp. Smoothing"]
+    all_model_names = ["Random Forest", "XGBoost", "SVR", "Moving Average", "Exp. Smoothing", "Holt-Winters"]
     latest = {}
     for run in ForecastRun.objects.filter(upload=upload).order_by("-created_at"):
         if run.model_name not in latest:

@@ -128,6 +128,8 @@
             &nbsp;·&nbsp; Window: {{ run.n_lags }}
           {% elif run.model_name == "Exp. Smoothing" %}
             &nbsp;·&nbsp; α: 0.{{ run.n_lags|stringformat:"02d" }}
+          {% elif run.model_name == "Holt-Winters" %}
+            &nbsp;·&nbsp; Additive trend &amp; seasonal
           {% else %}
             &nbsp;·&nbsp; Lags: {{ run.n_lags }}
           {% endif %}

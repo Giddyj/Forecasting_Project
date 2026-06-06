@@ -134,11 +134,17 @@
             <td><input type="number" name="alpha_es" value="0.3" min="0.01" max="0.99" step="0.01" style="width:70px; padding:6px 8px; border:1px solid #d1d5db; border-radius:6px;"></td>
             <td style="font-size:12px; color:#9ca3af;">Smoothing factor — higher = more weight on recent data</td>
           </tr>
+          <tr>
+            <td>Holt-Winters</td>
+            <td style="color:#6b7280; font-size:13px;">—</td>
+            <td style="font-size:12px; color:#9ca3af; padding: 10px 12px;">Auto</td>
+            <td style="font-size:12px; color:#9ca3af;">Additive trend + seasonal (seasonal fit requires ≥ 24 months)</td>
+          </tr>
         </tbody>
       </table>
       <div style="margin-top:16px; display:flex; gap:12px; align-items:center;">
         <button type="submit" class="btn btn-primary" style="border:none; cursor:pointer;">
-          Run Forecast (RF · XGB · SVR · MA · ES)
+          Run Forecast (RF · XGB · SVR · MA · ES · HW)
         </button>
         <a class="btn btn-secondary" href="/upload/{{ upload.id }}/forecast-compare/">
           View Comparison
